@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Civily – Civil Dispute Assistant</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: #121212;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      color: #e0e0e0;
+    }
+
+    #container {
+      width: 100%;
+      max-width: 650px;
+      margin: 40px auto;
+      background: #1e1e1e;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      color: #ffffff;
+    }
+
+    #messages {
+      min-height: 300px;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+      padding: 10px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background-color: #252525;
+    }
+
+    .message {
+      margin-bottom: 12px;
+    }
+
+    .user {
+      text-align: right;
+      color: #90caf9;
+      font-weight: 600;
+    }
+
+    .bot {
+      text-align: left;
+      color: #e0e0e0;
+      font-family: 'Nunito', sans-serif;
+      font-size: 1.05rem;
+      animation: fadeIn 0.4s ease-in-out;
+    }
+
+    #inputArea {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    #userInput {
+      flex-grow: 1;
+      padding: 12px;
+      font-size: 1rem;
+      border: 1px solid #444;
+      border-radius: 8px;
+      background-color: #1e1e1e;
+      color: #fff;
+    }
+
+    button {
+      padding: 12px 18px;
+      font-size: 1rem;
+      background-color: #004080;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #003366;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #888;
+      margin-top: 30px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* PDF-specific bubbles */
+    #pdfExport .message {
+      padding: 10px 14px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      max-width: 85%;
+      word-wrap: break-word;
+      font-size: 1rem;
+    }
+
+    #pdfExport .user {
+      background-color: #cce4ff;
+      text-align: right;
+      margin-left: auto;
+      color: #003366;
+    }
+
+    #pdfExport .bot {
+      background-color: #eeeeee;
+      color: #222;
+      text-align: left;
+      margin-right: auto;
+    }
+  </style>
+
+</head>
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <meta name="theme-color" content="#004080">
+  <meta name="mobile-web-app-capable" content="yes">
+<body>
+  <div id="container">
+    <header>
+      <header>
+        <img src="{{ url_for('static', filename='Civily.png') }}" alt="Civily Logo" width="80" style="vertical-align: middle; margin-right: 12px;" />
+        <h1 style="display: inline-block; vertical-align: middle;">Civily – Your Civil Dispute Companion</h1>
+        <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600&display=swap" rel="stylesheet" />
+    </header>
+
+    <div id="messages"></div>
+
+    <div id="inputArea">
+      <input type="text" id="userInput" placeholder="Type your question here..." />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <footer>
+      <div style="text-align: center; margin-top: 20px;">
+        <button onclick="downloadChat()">Download My Advice</button>
+        <button onclick="downloadPDF()">Download as PDF</button>
+      </div>
+      © 2025 Civily | Created with care to help UK residents
+    </footer>
+  </div>
+
+  <script>
+    async function sendMessage() {
+      const input = document.getElementById("userInput");
+      const message = input.value;
+      if (!message) return;
+
+      const messagesDiv = document.getElementById("messages");
+
+      // 🟦 Add user message
+      const userDiv = document.createElement("div");
+      userDiv.className = "message user";
+      userDiv.textContent = "You: " + message;
+      messagesDiv.appendChild(userDiv);
+      input.value = "";
+
+      // 🟨 Show typing indicator
+      const typingDiv = document.createElement("div");
+      typingDiv.className = "message bot";
+      typingDiv.id = "typing";
+      typingDiv.textContent = "Civily is typing...";
+      messagesDiv.appendChild(typingDiv);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      try {
+        const response = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message })
+        });
+
+        const data = await response.json();
+
+        // 🟩 Remove typing indicator
+        messagesDiv.removeChild(typingDiv);
+
+        // 🟩 Add actual bot response
+        const botDiv = document.createElement("div");
+        botDiv.className = "message bot";
+        botDiv.innerHTML = "<strong>Civily:</strong><br>" + 
+          (data.reply || "Sorry, there was an error.").replace(/\n/g, "<br>");
+        messagesDiv.appendChild(botDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      } catch (error) {
+        console.error("Error sending message:", error);
+      }
+    }
+
+    function downloadChat() {
+      const messagesDiv = document.getElementById("messages");
+      const messages = messagesDiv.querySelectorAll(".message");
+
+      let text = "";
+      messages.forEach((msg) => {
+        text += msg.textContent + "\n\n";
+      });
+
+      const blob = new Blob([text], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Civily_Advice.txt";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+    function downloadPDF() {
+      const element = document.getElementById("messages");
+      const opt = {
+        margin:       0.5,
+        filename:     'Civily_Advice.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+
+      html2pdf().set(opt).from(element).save();
+    }
+    // 🔑 Pressing Enter sends message
+    document.getElementById("userInput").addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault(); // prevent line break
+        sendMessage(); // call your existing function
+      }
+    });
+  </script>
+  </body>
+  </html>
+
+</body>
+</html>
